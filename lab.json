@@ -1,0 +1,46 @@
+{
+  "slug": "buckling-branch-jukebox",
+  "title": "Buckling Branch Jukebox",
+  "description": "A static offline toy sandbox demonstrating post-bifurcation branch diversity in a slender 3D beam under load. Fuses Bi-FORK's focus on coherent whole futures and post-bifurcation diversity with a symmetry-aware orbit dial for a toy beam sandbox.",
+  "paper": {
+    "title": "Bi-FORK: Bifurcation-Aware Flow Matching for Sampling Diverse Solutions of Inverse Problems",
+    "arxiv": "2610.12449",
+    "authors": [
+      "Anna Zimmel",
+      "Fleur Hendriks",
+      "Markus Holzleitner",
+      "Florian Sestak",
+      "Martin Weichselbaumer",
+      "Vlado Menkovski",
+      "Johannes Brandstetter"
+    ],
+    "license": "CC BY 4.0",
+    "url": "https://arxiv.org/html/2610.12449"
+  },
+  "novelty": "No known implementation (not verified). This demo fuses Bi-FORK's bifurcation diversity concept with an interactive toy beam sandbox featuring a symmetry-aware orbit dial that changes view only (not branch state), persistent branch sign per sample, and a clustered/spread comparison mode with envelope-aware amplitude scaling.",
+  "how_it_works": "Generates all trajectories locally in JavaScript from a declared toy rule. Uses 33 evenly spaced material points x in [0,1], 49 fixed playback frames, and nine fixed candidate seeds q = [-1,-0.75,-0.5,-0.25,0,0.25,0.5,0.75,1]. Normalized load L is clamped to [0,1]; imperfection e is clamped to [-0.15,0.15]. Toy critical load Lc=0.55. At frame load l(t)=L*t, the shared centerline before and at critical load is y=e*sin(pi*x)*min(l/Lc,1). Above critical load, signed branch score r=q+6e determines branch b=+1 when r>=0 else -1. Post-critical amplitude A=min(0.30, 0.30*sqrt((l-Lc)/(1-Lc))). Effective amplitude Aeff=min(A, max(0, 0.36-|e|)) respects the envelope |y|<=0.36. Trajectory: y=e*sin(pi*x)+b*Aeff*sin(pi*x). Branch sign fixed for entire trajectory. Spread mode applies deterministic one-sided amplitude reduction from Aeff toward max(0.80*Aeff, Aeff-0.04), clamped to envelope, for post-critical frames only.",
+  "controls": {
+    "load": "Range [0,1] step 0.01 — normalized load, clamped",
+    "imperfection": "Range [-0.15,0.15] step 0.01 — initial imperfection, clamped",
+    "orbit": "Range [-180,180] step 1 — camera orbit around beam axis (view only)",
+    "branch": "Button group (+/−) — selects physical branch for left pane",
+    "mode": "Button group (Clustered/Spread) — ensemble display mode for right pane",
+    "playback": "Play/Pause, Step back/forward, Reset — 49 frames",
+    "touch": "Drag on beam canvas rotates camera orbit",
+    "keyboard": "All controls focusable and operable by keyboard",
+    "reduced_motion": "Respects prefers-reduced-motion: auto-play pauses by default"
+  },
+  "files": {
+    "demo": "demo/index.html"
+  },
+  "limits": {
+    "runtime_network": false,
+    "external_fonts": false,
+    "cdn_scripts": false,
+    "personal_data": false,
+    "max_pixel_ratio": 2
+  },
+  "provenance_notice": "Locally generated toy trajectories. Equations and values are illustrative; these are not Bi-FORK output, validated mechanics, or evidence about real branch likelihoods.",
+  "license": "MIT",
+  "third_party_code": "None"
+}

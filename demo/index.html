@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Buckling Branch Jukebox</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #09131c; color: #eaf2f5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 52% -18%, #254958 0, #09131c 58%); }
+    main { width: min(1100px, 100%); margin: auto; padding: 24px clamp(14px, 4vw, 38px) 32px; }
+    header { display: flex; justify-content: space-between; align-items: end; gap: 18px; margin-bottom: 16px; }
+    h1 { font-size: clamp(1.45rem, 4vw, 2.25rem); margin: 0 0 4px; letter-spacing: -.035em; }
+    p { line-height: 1.5; }
+    .eyebrow { color: #79d9cb; text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; font-weight: 750; }
+    .hint { margin: 0; color: #c0d0d6; max-width: 670px; }
+    .readout { white-space: nowrap; border: 1px solid #31515b; background: #10232b; padding: 9px 12px; border-radius: 12px; color: #9de4d8; font-variant-numeric: tabular-nums; }
+    .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .pane { border: 1px solid #28424e; background: linear-gradient(145deg, #132731, #0b1922); border-radius: 18px; padding: 12px; min-width: 0; box-shadow: 0 18px 45px #0003; }
+    .pane-head { display: flex; justify-content: space-between; align-items: center; padding: 1px 3px 8px; }
+    .pane h2 { font-size: .96rem; margin: 0; }
+    .pane-label { color: #92aab3; font-size: .78rem; }
+    canvas { display: block; width: 100%; height: 260px; border-radius: 11px; background: #0a1720; touch-action: none; }
+    .scrub { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin: 14px 2px 2px; color: #adc2c9; font-size: .82rem; }
+    input[type="range"] { accent-color: #65d4c3; width: 100%; min-height: 28px; }
+    .controls { display: grid; grid-template-columns: 1.1fr 1.1fr 1fr 1fr; gap: 12px; margin-top: 13px; }
+    fieldset { margin: 0; min-width: 0; border: 1px solid #28424e; border-radius: 13px; padding: 8px 11px 9px; }
+    legend { color: #a9c0c8; font-size: .75rem; padding: 0 4px; }
+    .value { color: #d9efec; float: right; margin-left: 6px; font-size: .78rem; font-variant-numeric: tabular-nums; }
+    button { border: 1px solid #3c6570; color: #eaf5f5; background: #17333d; min-height: 42px; border-radius: 10px; padding: 8px 13px; font: inherit; font-size: .88rem; cursor: pointer; }
+    button:hover { background: #214650; }
+    button:focus-visible, input:focus-visible { outline: 3px solid #f3cc72; outline-offset: 2px; }
+    button[aria-pressed="true"] { color: #07191b; background: #75dec8; border-color: #75dec8; font-weight: 700; }
+    .button-row { display: flex; gap: 7px; margin-top: 5px; }
+    .mode-toggle { max-width: 330px; margin-top: 10px; }
+    .button-row button { flex: 1; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+    .actions .primary { background: #a5e7d7; color: #102c2a; border-color: #a5e7d7; font-weight: 750; min-width: 102px; }
+    .actions .spacer { flex: 1; }
+    .status { color: #99b2bb; font-size: .8rem; }
+    .note { border-left: 3px solid #d5a85d; color: #c0ccd0; padding: 2px 0 2px 12px; font-size: .82rem; margin: 14px 0 10px; }
+    footer { border-top: 1px solid #263b44; padding-top: 10px; color: #8198a1; font-size: .74rem; line-height: 1.55; }
+    footer a { color: #86d9cf; }
+    @media (max-width: 720px) { header { align-items: start; flex-direction: column; gap: 10px; } .panes { grid-template-columns: 1fr; } canvas { height: 225px; } .controls { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 430px) { main { padding-top: 17px; } .controls { grid-template-columns: 1fr; } canvas { height: 205px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div><div class="eyebrow">Local toy simulation · 49 fixed frames</div><h1>Buckling Branch Jukebox</h1><p class="hint">Raise load to split the beam; change imperfection to favor a side. Orbit changes your view, not the branch.</p></div>
+    <div class="readout" id="load-readout" aria-live="polite">LOAD 0.82 · FRAME 00/48</div>
+  </header>
+  <section class="panes" aria-label="Beam comparisons">
+    <article class="pane"><div class="pane-head"><h2>Physical branch</h2><span class="pane-label" id="branch-caption">Branch +</span></div><canvas id="branch-view" role="img" aria-label="Animated toy beam on the selected physical branch"></canvas></article>
+    <article class="pane"><div class="pane-head"><h2>Same setup · nine seeds</h2><span class="pane-label" id="ensemble-caption">Clustered</span></div><canvas id="ensemble-view" role="img" aria-label="Nine deterministic toy beam trajectories"></canvas></article>
+  </section>
+  <div class="scrub"><label for="frame">Playback frame</label><input id="frame" type="range" min="0" max="48" step="1" value="38"><output id="frame-output">38 / 48</output></div>
+  <section class="controls" aria-label="Simulation controls">
+    <fieldset><legend>Normalized load <span class="value" id="load-value">0.82</span></legend><input id="load" aria-label="Normalized load" type="range" min="0" max="1" step="0.01" value="0.82"></fieldset>
+    <fieldset><legend>Initial imperfection <span class="value" id="imperfection-value">0.00</span></legend><input id="imperfection" aria-label="Initial imperfection" type="range" min="-0.15" max="0.15" step="0.01" value="0"></fieldset>
+    <fieldset><legend>Camera orbit <span class="value" id="orbit-value">0°</span></legend><input id="orbit" aria-label="Camera orbit around beam" type="range" min="-180" max="180" step="1" value="0"></fieldset>
+    <fieldset><legend>Physical branch</legend><div class="button-row"><button type="button" id="minus" aria-pressed="false" aria-label="Select negative physical branch">− branch</button><button type="button" id="plus" aria-pressed="true" aria-label="Select positive physical branch">+ branch</button></div></fieldset>
+  </section>
+  <div class="actions"><button class="primary" type="button" id="play">▶ Play</button><button type="button" id="step-back" aria-label="Previous frame">− Frame</button><button type="button" id="step-forward" aria-label="Next frame">+ Frame</button><button type="button" id="reset">Reset</button><span class="spacer"></span><span class="status" id="play-status" aria-live="polite">Paused</span></div>
+  <div class="button-row mode-toggle" role="group" aria-label="Ensemble display mode"><button type="button" id="clustered" aria-pressed="true">Clustered</button><button type="button" id="spread" aria-pressed="false">Spread</button></div>
+  <p class="note">Locally generated toy trajectories. Equations and values are illustrative; these are not Bi-FORK output, validated mechanics, or evidence about real branch likelihoods.</p>
+  <footer>Paper: <a href="https://arxiv.org/html/2610.12449">Bi-FORK</a> by Anna Zimmel, Fleur Hendriks, Markus Holzleitner, Florian Sestak, Martin Weichselbaumer, Vlado Menkovski and Johannes Brandstetter (CC BY 4.0). This independent toy uses a declared sine-mode beam rule and nine fixed seeds; it does not reproduce the paper or use its code, data, weights, or assets.</footer>
+</main>
+<script>
+(() => {
+  'use strict';
+  const Lc = 0.55;
+  const xs = Array.from({ length: 33 }, (_, i) => i / 32);
+  const seeds = [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1];
+  const ui = Object.fromEntries(['branch-view', 'ensemble-view', 'load', 'imperfection', 'orbit', 'frame', 'load-value', 'imperfection-value', 'orbit-value', 'frame-output', 'load-readout', 'branch-caption', 'ensemble-caption', 'play-status', 'play', 'minus', 'plus', 'clustered', 'spread', 'step-back', 'step-forward', 'reset'].map((id) => [id, document.getElementById(id)]));
+  const state = { load: 0.82, imperfection: 0, orbit: 0, frame: 38, branch: 1, spread: false, playing: false, last: 0, dragX: null };
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  if (reduceMotion.matches) ui['play-status'].textContent = 'Paused · reduced motion';
+  function frameLoad() { return state.load * state.frame / 48; }
+  function baseAmplitude(load) { return load <= Lc ? 0 : Math.min(0.30, 0.30 * Math.sqrt((load - Lc) / (1 - Lc))); }
+  function effectiveAmplitude(load, imperfection) {
+    const A = baseAmplitude(load);
+    const envelopeHeadroom = Math.max(0, 0.36 - Math.abs(imperfection));
+    return Math.min(A, envelopeHeadroom);
+  }
+  function sample(seed, load, imperfection, spreadIndex = 0, count = 1) {
+    const branch = seed + 6 * imperfection >= 0 ? 1 : -1;
+    let Aeff = effectiveAmplitude(load, imperfection);
+    if (state.spread && load > Lc && count > 1) {
+      const maxReduction = Math.min(0.04, 0.20 * Aeff);
+      const offset = maxReduction * spreadIndex / (count - 1);
+      Aeff = Aeff - offset;
+    }
+    return { branch, points: xs.map((x) => {
+      const base = imperfection * Math.sin(Math.PI * x);
+      let y = load <= Lc ? base * Math.min(load / Lc, 1) : base + branch * Aeff * Math.sin(Math.PI * x);
+      if (load > Lc) y = Math.max(-0.36, Math.min(0.36, y));
+      return { x, y, z: 0.035 * Math.sin(2 * Math.PI * x) };
+    }) };
+  }
+  function draw(canvas, ensemble) {
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.round(rect.width * dpr); canvas.height = Math.round(rect.height * dpr);
+    const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const w = rect.width, h = rect.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = '#1e3540'; ctx.lineWidth = 1;
+    for (let y = 0; y < 5; y++) { ctx.beginPath(); ctx.moveTo(0, h * (0.2 + y * 0.16)); ctx.lineTo(w, h * (0.2 + y * 0.16)); ctx.stroke(); }
+    const load = frameLoad();
+    const samples = ensemble ? seeds.map((seed) => {
+      const sign = seed + 6 * state.imperfection >= 0 ? 1 : -1;
+      const sameSign = seeds.filter((candidate) => (candidate + 6 * state.imperfection >= 0 ? 1 : -1) === sign);
+      return sample(seed, load, state.imperfection, sameSign.indexOf(seed), sameSign.length);
+    }) : [(() => {
+      const signSeeds = seeds.filter((seed) => (seed + 6 * state.imperfection >= 0 ? 1 : -1) === state.branch);
+      const seed = signSeeds[0] ?? (state.branch > 0 ? 1 : -1);
+      return sample(seed, load, state.imperfection);
+    })()];
+    const colors = ['#ffb45c', '#ff8c70', '#ea7797', '#c782d3', '#ae9df0', '#81b8ff', '#65d7cb', '#9be28d', '#d5e278'];
+    const theta = state.orbit * Math.PI / 180;
+    for (let j = 0; j < samples.length; j++) {
+      const s = samples[j];
+      ctx.beginPath();
+      s.points.forEach((p, i) => {
+        const depth = p.z * Math.cos(theta);
+        const px = 28 + p.x * (w - 56) + Math.sin(theta) * p.z * 170;
+        const py = h * 0.51 - (p.y + depth) * h * 1.23;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      });
+      ctx.strokeStyle = ensemble ? colors[j] : (s.branch > 0 ? '#74e0ca' : '#ffa968');
+      ctx.globalAlpha = ensemble ? 0.78 : 1; ctx.lineWidth = ensemble ? 2 : 4; ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    const splitX = 28 + (w - 56) * Math.min(1, Lc / Math.max(state.load, 0.001));
+    if (state.load > Lc) { ctx.setLineDash([4, 5]); ctx.strokeStyle = '#52717a'; ctx.beginPath(); ctx.moveTo(splitX, 12); ctx.lineTo(splitX, h - 12); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.fillStyle = '#94aeb7'; ctx.font = '11px system-ui'; ctx.fillText('FIXED END', 8, h - 8); ctx.fillText('FREE END', w - 65, h - 8);
+  }
+  function render() {
+    const load = frameLoad();
+    ui['load-value'].textContent = state.load.toFixed(2);
+    ui['imperfection-value'].textContent = state.imperfection.toFixed(2);
+    ui['orbit-value'].textContent = `${state.orbit}°`;
+    ui['frame-output'].value = `${state.frame} / 48`;
+    ui.frame.value = state.frame;
+    ui['load-readout'].textContent = `LOAD ${state.load.toFixed(2)} · FRAME ${String(state.frame).padStart(2, '0')}/48`;
+    ui['branch-caption'].textContent = `Branch ${state.branch > 0 ? '+' : '−'} · ${load <= Lc ? 'pre-critical' : 'post-critical'}`;
+    ui['ensemble-caption'].textContent = state.spread ? 'Spread · post-critical only' : 'Clustered';
+    ui.minus.setAttribute('aria-pressed', String(state.branch < 0)); ui.plus.setAttribute('aria-pressed', String(state.branch > 0));
+    ui.clustered.setAttribute('aria-pressed', String(!state.spread)); ui.spread.setAttribute('aria-pressed', String(state.spread));
+    draw(ui['branch-view'], false); draw(ui['ensemble-view'], true);
+  }
+  function setPlaying(value) { state.playing = value; ui.play.textContent = value ? '❚❚ Pause' : '▶ Play'; ui['play-status'].textContent = value ? 'Playing' : (reduceMotion.matches ? 'Paused · reduced motion' : 'Paused'); }
+  function updateLoad() { state.load = Math.max(0, Math.min(1, Number(ui.load.value))); render(); }
+  function updateImperfection() { state.imperfection = Math.max(-0.15, Math.min(0.15, Number(ui.imperfection.value))); render(); }
+  ui.load.addEventListener('input', updateLoad); ui.imperfection.addEventListener('input', updateImperfection);
+  ui.orbit.addEventListener('input', () => { state.orbit = Number(ui.orbit.value); render(); });
+  ui.frame.addEventListener('input', () => { setPlaying(false); state.frame = Number(ui.frame.value); render(); });
+  ui.minus.addEventListener('click', () => { state.branch = -1; render(); }); ui.plus.addEventListener('click', () => { state.branch = 1; render(); });
+  ui.clustered.addEventListener('click', () => { state.spread = false; render(); }); ui.spread.addEventListener('click', () => { state.spread = true; render(); });
+  ui.play.addEventListener('click', () => setPlaying(!state.playing));
+  ui['step-back'].addEventListener('click', () => { setPlaying(false); state.frame = Math.max(0, state.frame - 1); render(); });
+  ui['step-forward'].addEventListener('click', () => { setPlaying(false); state.frame = Math.min(48, state.frame + 1); render(); });
+  ui.reset.addEventListener('click', () => { setPlaying(false); Object.assign(state, { load: 0.82, imperfection: 0, orbit: 0, frame: 0, branch: 1, spread: false }); ui.load.value = state.load; ui.imperfection.value = '0'; ui.orbit.value = '0'; render(); });
+  for (const canvas of [ui['branch-view'], ui['ensemble-view']]) {
+    canvas.addEventListener('pointerdown', (event) => { state.dragX = event.clientX; canvas.setPointerCapture(event.pointerId); });
+    canvas.addEventListener('pointermove', (event) => { if (state.dragX === null) return; const delta = event.clientX - state.dragX; state.dragX = event.clientX; state.orbit = Math.max(-180, Math.min(180, state.orbit + delta * 0.7)); ui.orbit.value = state.orbit; render(); });
+    canvas.addEventListener('pointerup', () => { state.dragX = null; }); canvas.addEventListener('pointercancel', () => { state.dragX = null; });
+  }
+  function tick(time) { if (state.playing && time - state.last > 100) { state.last = time; if (state.frame >= 48) state.frame = 0; else state.frame += 1; render(); } requestAnimationFrame(tick); }
+  addEventListener('resize', render); render(); requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
